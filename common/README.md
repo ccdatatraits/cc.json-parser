@@ -66,7 +66,7 @@ python test_suite.py --benchmark             # Performance benchmarks
 ## Installation
 
 ### Prerequisites
-- Python 3.7 or higher
+- Python 3.8 or higher
 - No external dependencies required (uses only Python standard library)
 
 ### Setup
