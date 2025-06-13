@@ -1,0 +1,206 @@
+name: JSON Parser CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  python-tests:
+    name: Python Implementation
+    uses: ./.github/workflows/python-ci.yml
+
+  rust-tests:
+    name: Rust Implementation  
+    uses: ./.github/workflows/rust-ci.yml
+
+  integration-tests:
+    name: Cross-Implementation Tests
+    runs-on: ubuntu-latest
+    needs: [python-tests, rust-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    
+    - name: Install Python dependencies
+      working-directory: ./python-implementation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Build Rust implementation
+      working-directory: ./rust-implementation
+      run: cargo build --release
+    
+    - name: Run cross-implementation tests
+      run: |
+        echo "Testing both implementations against common test files..."
+        
+        # Test valid JSON files
+        for file in common/test-files/*.json; do
+          if [[ -f "$file" ]]; then
+            echo "Testing $file..."
+            
+            # Run Python implementation
+            python_result=$(cd python-implementation && python json_parser.py "../$file"; echo $?)
+            
+            # Run Rust implementation  
+            rust_result=$(cd rust-implementation && ./target/release/json-cli "../$file"; echo $?)
+            
+            # Compare results
+            if [ "$python_result" != "$rust_result" ]; then
+              echo "ERROR: Implementations disagree on $file"
+              echo "Python exit code: $python_result"
+              echo "Rust exit code: $rust_result"
+              exit 1
+            else
+              echo "✓ Both implementations agree on $file (exit code: $python_result)"
+            fi
+          fi
+        done
+        
+        echo "All cross-implementation tests passed!"
+
+  performance-comparison:
+    name: Performance Comparison
+    runs-on: ubuntu-latest
+    needs: [python-tests, rust-tests]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    
+    - name: Install Python dependencies
+      working-directory: ./python-implementation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+    
+    - name: Build Rust implementation
+      working-directory: ./rust-implementation
+      run: cargo build --release
+    
+    - name: Run performance comparison
+      run: |
+        echo "Performance Comparison Report" > performance_report.txt
+        echo "=============================" >> performance_report.txt
+        echo "" >> performance_report.txt
+        
+        for file in common/performance-files/*.json; do
+          if [[ -f "$file" ]]; then
+            echo "Testing performance on $(basename $file)..." | tee -a performance_report.txt
+            
+            # Python timing
+            python_time=$(cd python-implementation && { time python json_parser.py "../$file" > /dev/null; } 2>&1 | grep real | awk '{print $2}')
+            echo "Python: $python_time" | tee -a performance_report.txt
+            
+            # Rust timing  
+            rust_time=$(cd rust-implementation && { time ./target/release/json-cli "../$file" > /dev/null; } 2>&1 | grep real | awk '{print $2}')
+            echo "Rust: $rust_time" | tee -a performance_report.txt
+            echo "" | tee -a performance_report.txt
+          fi
+        done
+    
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: performance_report.txt
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [integration-tests, performance-comparison]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download Python artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package
+        path: ./artifacts/python/
+    
+    - name: Download Rust artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: rust-package
+        path: ./artifacts/rust/
+    
+    - name: Download performance report
+      uses: actions/download-artifact@v3
+      with:
+        name: performance-report
+        path: ./artifacts/
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release v${{ github.run_number }}
+        body: |
+          ## JSON Parser Release v${{ github.run_number }}
+          
+          This release includes both Python and Rust implementations of the JSON parser.
+          
+          ### What's Included
+          - Python package (wheel and source distribution)
+          - Rust binary (json-cli)
+          - Performance comparison report
+          
+          ### Testing
+          - All unit tests passed
+          - Cross-implementation compatibility verified
+          - Performance benchmarks completed
+          
+          Built from commit: ${{ github.sha }}
+        draft: false
+        prerelease: false
+    
+    - name: Upload Python Package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/python/
+        asset_name: python-json-parser.zip
+        asset_content_type: application/zip
+    
+    - name: Upload Rust Binary
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/rust/json-cli
+        asset_name: json-cli-linux
+        asset_content_type: application/octet-stream

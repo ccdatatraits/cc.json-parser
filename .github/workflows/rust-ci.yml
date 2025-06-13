@@ -1,0 +1,162 @@
+name: Rust JSON Parser CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'rust-implementation/**'
+      - 'common/**'
+      - '.github/workflows/rust-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'rust-implementation/**'
+      - 'common/**'
+      - '.github/workflows/rust-ci.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust-version: [stable, beta, nightly]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust ${{ matrix.rust-version }}
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust-version }}
+        override: true
+        components: rustfmt, clippy
+    
+    - name: Cache cargo registry
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo index
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Cache cargo build
+      uses: actions/cache@v3
+      with:
+        path: rust-implementation/target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Check formatting
+      working-directory: ./rust-implementation
+      run: cargo fmt -- --check
+    
+    - name: Run clippy
+      working-directory: ./rust-implementation
+      run: cargo clippy -- -D warnings
+    
+    - name: Build
+      working-directory: ./rust-implementation
+      run: cargo build --verbose
+    
+    - name: Run tests
+      working-directory: ./rust-implementation
+      run: cargo test --verbose
+    
+    - name: Build release
+      working-directory: ./rust-implementation
+      run: cargo build --release --verbose
+    
+    - name: Test CLI functionality
+      working-directory: ./rust-implementation
+      run: |
+        ./target/release/json-cli ../common/test-files/test_complex.json
+        ./target/release/json-cli ../common/test-files/empty_array.json
+        ./target/release/json-cli ../common/test-files/string_root.json
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    
+    - name: Cache cargo
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          rust-implementation/target
+        key: ${{ runner.os }}-cargo-benchmark-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Run benchmarks
+      working-directory: ./rust-implementation
+      run: |
+        cargo build --release
+        echo "Running performance tests with common test files..."
+        time ./target/release/json-cli ../common/performance-files/performance_large.json
+        time ./target/release/json-cli ../common/performance-files/performance_nested.json
+        time ./target/release/json-cli ../common/performance-files/performance_array.json
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    
+    - name: Install cargo-audit
+      run: cargo install cargo-audit
+    
+    - name: Run security audit
+      working-directory: ./rust-implementation
+      run: cargo audit
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [test, benchmark, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    
+    - name: Build release package
+      working-directory: ./rust-implementation
+      run: |
+        cargo build --release
+        cargo package --allow-dirty
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: rust-package
+        path: |
+          rust-implementation/target/release/json-cli
+          rust-implementation/target/package/

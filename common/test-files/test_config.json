@@ -1,0 +1,180 @@
+{
+  "valid_tests": [
+    {
+      "name": "empty_object",
+      "file": "../common/test-files/test_step1.json",
+      "description": "Empty object"
+    },
+    {
+      "name": "simple_key_value", 
+      "file": "../common/test-files/test_step2.json",
+      "description": "Simple key-value pair"
+    },
+    {
+      "name": "multiple_value_types",
+      "file": "../common/test-files/test_step3.json", 
+      "description": "Multiple value types"
+    },
+    {
+      "name": "nested_structures",
+      "file": "../common/test-files/test_step4.json",
+      "description": "Nested structures"
+    },
+    {
+      "name": "complex_json",
+      "file": "../common/test-files/test_complex.json",
+      "description": "Complex nested JSON"
+    }
+  ],
+  "invalid_tests": [
+    {
+      "name": "missing_brace",
+      "file": "../common/test-files/test_invalid.json", 
+      "description": "Invalid JSON (missing brace)"
+    }
+  ],
+  "generated_tests": [
+    {
+      "name": "missing_value",
+      "content": "{\"key\": }",
+      "file": "missing_value.json",
+      "description": "Missing value",
+      "should_pass": false
+    },
+    {
+      "name": "missing_colon", 
+      "content": "{\"key\" \"value\"}",
+      "file": "missing_colon.json",
+      "description": "Missing colon",
+      "should_pass": false
+    },
+    {
+      "name": "trailing_comma_object",
+      "content": "{\"key\": \"value\",}",
+      "file": "trailing_comma.json", 
+      "description": "Trailing comma in object",
+      "should_pass": false
+    },
+    {
+      "name": "trailing_comma_array",
+      "content": "[1, 2, 3,]",
+      "file": "array_trailing_comma.json",
+      "description": "Array trailing comma", 
+      "should_pass": false
+    },
+    {
+      "name": "unterminated_string",
+      "content": "{\"key\": \"unterminated string}",
+      "file": "unterminated_string.json",
+      "description": "Unterminated string",
+      "should_pass": false
+    },
+    {
+      "name": "invalid_number",
+      "content": "{\"key\": 123.}",
+      "file": "invalid_number.json", 
+      "description": "Invalid number format",
+      "should_pass": false
+    },
+    {
+      "name": "null_root",
+      "content": "null",
+      "file": "null_root.json",
+      "description": "Null as root",
+      "should_pass": true
+    },
+    {
+      "name": "string_root", 
+      "content": "\"string\"",
+      "file": "string_root.json",
+      "description": "String as root",
+      "should_pass": true
+    },
+    {
+      "name": "number_root",
+      "content": "123", 
+      "file": "number_root.json",
+      "description": "Number as root",
+      "should_pass": true
+    },
+    {
+      "name": "boolean_root",
+      "content": "true",
+      "file": "boolean_root.json",
+      "description": "Boolean as root", 
+      "should_pass": true
+    }
+  ],
+  "edge_case_tests": [
+    {
+      "name": "empty_string",
+      "content": "\"\"",
+      "file": "empty_string.json",
+      "description": "Empty string as root",
+      "should_pass": true
+    },
+    {
+      "name": "zero",
+      "content": "0",
+      "file": "zero.json", 
+      "description": "Zero as root",
+      "should_pass": true
+    },
+    {
+      "name": "negative_number",
+      "content": "-42",
+      "file": "negative_number.json",
+      "description": "Negative number",
+      "should_pass": true
+    },
+    {
+      "name": "decimal_number",
+      "content": "3.14159",
+      "file": "decimal_number.json",
+      "description": "Decimal number",
+      "should_pass": true
+    },
+    {
+      "name": "scientific_notation", 
+      "content": "1.23e-10",
+      "file": "scientific_notation.json",
+      "description": "Scientific notation",
+      "should_pass": true
+    },
+    {
+      "name": "unicode_string",
+      "content": "\"Hello \\u4e16\\u754c\"",
+      "file": "unicode_string.json", 
+      "description": "Unicode string",
+      "should_pass": true
+    },
+    {
+      "name": "escaped_quotes",
+      "content": "\"He said \\\"Hello\\\"\"",
+      "file": "escaped_quotes.json",
+      "description": "Escaped quotes in string", 
+      "should_pass": true
+    },
+    {
+      "name": "empty_array",
+      "content": "[]",
+      "file": "empty_array.json",
+      "description": "Empty array",
+      "should_pass": true
+    },
+    {
+      "name": "deeply_nested",
+      "content": "{\"a\":{\"b\":{\"c\":{\"d\":{\"e\":{\"f\":\"deep\"}}}}}}",
+      "file": "deeply_nested.json", 
+      "description": "Deeply nested object",
+      "should_pass": true
+    },
+    {
+      "name": "mixed_array",
+      "content": "[null, true, false, 0, \"\", {}, []]",
+      "file": "mixed_array.json",
+      "description": "Array with mixed types",
+      "should_pass": true
+    }
+  ]
+}

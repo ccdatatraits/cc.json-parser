@@ -1,0 +1,20 @@
+[package]
+name = "streaming-json-parser"
+version = "0.1.0"
+edition = "2021"
+authors = ["Claude Code"]
+description = "A streaming JSON parser using Iterator pattern in Rust"
+license = "MIT"
+
+[dependencies]
+thiserror = "1.0"
+
+[dev-dependencies]
+
+[lib]
+name = "streaming_json_parser"
+path = "src/lib.rs"
+
+[[bin]]
+name = "json-cli"
+path = "src/main.rs"

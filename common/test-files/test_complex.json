@@ -1,0 +1,13 @@
+{
+  "name": "John Doe",
+  "age": 30,
+  "active": true,
+  "address": {
+    "street": "123 Main St",
+    "city": "Anytown",
+    "coordinates": [40.7128, -74.0060]
+  },
+  "hobbies": ["reading", "swimming", "coding"],
+  "spouse": null,
+  "pi": 3.14159
+}

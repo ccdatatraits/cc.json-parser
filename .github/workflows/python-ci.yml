@@ -1,0 +1,103 @@
+name: Python JSON Parser CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'python-implementation/**'
+      - 'common/**'
+      - '.github/workflows/python-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'python-implementation/**'
+      - 'common/**'
+      - '.github/workflows/python-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      working-directory: ./python-implementation
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev,test]
+    
+    - name: Lint with flake8
+      working-directory: ./python-implementation
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Format check with black
+      working-directory: ./python-implementation
+      run: |
+        black --check --diff .
+    
+    - name: Type check with mypy
+      working-directory: ./python-implementation
+      run: |
+        mypy . --ignore-missing-imports
+    
+    - name: Test with unittest
+      working-directory: ./python-implementation
+      run: |
+        python -m unittest test_suite -v
+    
+    - name: Run benchmark tests
+      working-directory: ./python-implementation
+      run: |
+        python test_suite.py --benchmark
+    
+    - name: Test CLI functionality
+      working-directory: ./python-implementation
+      run: |
+        python json_parser.py ../common/test-files/test_complex.json
+        python json_parser.py ../common/test-files/empty_array.json
+        python json_parser.py ../common/test-files/string_root.json
+
+  package:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build package
+      working-directory: ./python-implementation
+      run: |
+        python -m build
+    
+    - name: Check package
+      working-directory: ./python-implementation
+      run: |
+        twine check dist/*
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package
+        path: python-implementation/dist/
